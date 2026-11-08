@@ -1,4 +1,4 @@
-name: Build Multiplataforma (Windows, Linux, macOS & Web)
+name: Build Multiplataforma, GitHub Pages, Packages & Release
 
 on:
   push:
@@ -6,9 +6,15 @@ on:
     tags: ['v*']
   workflow_dispatch:
 
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  packages: write
+
 jobs:
   build-web:
-    name: 🌐 Build Web (Navegador)
+    name: 🌐 Build Web & Deploy GitHub Pages
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,14 +23,50 @@ jobs:
           node-version: 20
           cache: 'npm'
       - run: npm ci
-      - run: npm run build:web
+      - run: npx vite build --base=./ --outDir dist-web
       - uses: actions/upload-artifact@v4
         with:
           name: nexomd-web-browser-bundle
           path: dist-web/
 
+  publish-ghcr-package:
+    name: 📦 Publicar Pacote Container (GitHub Packages GHCR)
+    runs-on: ubuntu-latest
+    needs: build-web
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: nexomd-web-browser-bundle
+          path: dist-web
+      - name: Criar Dockerfile leve Nginx para o NexoMD Web
+        run: |
+          cat << 'EOF' > Dockerfile
+          FROM nginx:alpine
+          LABEL org.opencontainers.image.source="https://github.com/ed1rac/nexo-md"
+          LABEL org.opencontainers.image.description="NexoMD — Editor Markdown Híbrido de Alta Performance por Edkallenn (@ed1rac)"
+          LABEL org.opencontainers.image.licenses="GPL-3.0-or-later"
+          COPY dist-web/ /usr/share/nginx/html/
+          EXPOSE 80
+          EOF
+      - name: Login no GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build e Push para GitHub Packages (ghcr.io/ed1rac/nexo-md)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/ed1rac/nexo-md:latest
+            ghcr.io/ed1rac/nexo-md:0.1.0
+
   build-desktop:
-    name: 🖥️ Build Nativo (${{ matrix.os }})
+    name: 🖥️ Build Nativo (${{ matrix.os }} - ${{ matrix.target }})
     strategy:
       fail-fast: false
       matrix:
@@ -71,7 +113,7 @@ jobs:
           npm run build
 
       - name: Executar testes unitários do motor Rust
-        run: cargo test --manifest-path src-tauri/Cargo.toml
+        run: cargo test --manifest-path src-tauri/Cargo.toml --lib
 
       - name: Compilar Binário Nativo Rust Release
         run: cargo build --release --manifest-path src-tauri/Cargo.toml --target ${{ matrix.target }}

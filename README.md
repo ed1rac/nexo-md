@@ -8,10 +8,18 @@
 [![Rust](https://img.shields.io/badge/Core-Rust%20%2B%20Ropey-orange.svg)](https://www.rust-lang.org/)
 [![Tauri v2](https://img.shields.io/badge/Desktop-Tauri%20v2-24c8db.svg)](https://v2.tauri.app/)
 [![Vue 3](https://img.shields.io/badge/UI-Vue%203.5%20%2B%20TS-42b883.svg)](https://vuejs.org/)
+[![Vercel App](https://img.shields.io/badge/Demo%20Online-Vercel%20App-000000?logo=vercel)](https://nexomarkdown.vercel.app/)
+[![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live%20Web-222222?logo=github)](https://ed1rac.github.io/nexo-md/)
+[![Releases](https://img.shields.io/badge/Releases-Windows%20%7C%20Linux%20%7C%20macOS-success?logo=github)](https://github.com/ed1rac/nexo-md/releases/tag/v0.1.0)
 [![Autor](https://img.shields.io/badge/Autor-Edkallenn%20(%40ed1rac)-purple.svg)](https://github.com/ed1rac)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-edkallenn-FFDD00?logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/edkallenn)
 
 *Roda **nativamente** em Desktop (Windows, Linux e macOS) com binário ultraleve e **também direto no navegador Web**!*
+
+### 🌐 Acesse Agora no Navegador (Sem Instalar Nada):
+- 🚀 **App Online na Vercel**: **[https://nexomarkdown.vercel.app/](https://nexomarkdown.vercel.app/)**
+- 🌍 **Espelho no GitHub Pages**: **[https://ed1rac.github.io/nexo-md/](https://ed1rac.github.io/nexo-md/)**
+- 📦 **Downloads Nativos (Windows, Linux e macOS)**: **[Página Oficial de Releases (`v0.1.0`)](https://github.com/ed1rac/nexo-md/releases/tag/v0.1.0)**
 
 </div>
 
@@ -70,12 +78,18 @@ O **NexoMD** é um editor de Markdown moderno, rápido e seguro, concebido do ze
 
 O **NexoMD** oferece **5 formas diferentes de execução**, desde o uso imediato com dois cliques (sem instalar nada) até o ambiente completo de desenvolvimento e compilação nativa:
 
-### 0. Execução Imediata (Sem Instalar Dependências / Zero Configuração)
+### 0. Execução Imediata (Online ou Nativos Prontos — Zero Configuração)
 
-- 🪟 **A) Executável Nativo Windows (Pronto para Uso)**:
-  - Basta abrir a pasta [`releases/windows/`](./releases/windows/) e dar **dois cliques** em **`nexo-md.exe`** (`6,65 MB`, acompanhado da `WebView2Loader.dll` na mesma pasta).
+- 🚀 **A) Online direto na Web (Vercel / GitHub Pages)**:
+  - Acesse **[https://nexomarkdown.vercel.app/](https://nexomarkdown.vercel.app/)** ou **[https://ed1rac.github.io/nexo-md/](https://ed1rac.github.io/nexo-md/)** em qualquer dispositivo.
+- 🪟 **B) Executável Nativo Windows (Pronto para Uso)**:
+  - Baixe na **[Página de Releases](https://github.com/ed1rac/nexo-md/releases/tag/v0.1.0)** ou abra a pasta [`releases/windows/`](./releases/windows/) e dê **dois cliques** em **`nexo-md.exe`** (`6,65 MB`).
   - Roda nativamente no Windows 10/11 consumindo apenas ~35 MB de RAM, sem precisar de Node.js ou Rust instalados.
-- 🌐 **B) Versão Web Autônoma Offline (*Single-File Web App*)**:
+- 🐧 **C) Executável Nativo Linux (`x86_64`)**:
+  - Disponível em [`releases/linux-x64/nexo-md`](./releases/linux-x64/nexo-md) e na **[Página de Releases](https://github.com/ed1rac/nexo-md/releases/tag/v0.1.0)** (`chmod +x nexo-md && ./nexo-md`).
+- 🍎 **D) Executável Nativo macOS (Apple Silicon `arm64` M1/M2/M3/M4 e Intel `x86_64`)**:
+  - Disponível em [`releases/macos-arm64/nexo-md`](./releases/macos-arm64/nexo-md) e [`releases/macos-x64/nexo-md`](./releases/macos-x64/nexo-md) ou na **[Página de Releases](https://github.com/ed1rac/nexo-md/releases/tag/v0.1.0)**.
+- 🌐 **E) Versão Web Autônoma Offline (*Single-File Web App*)**:
   - Basta abrir a pasta [`dist-web/`](./dist-web/) e dar **dois cliques** diretamente em **`index.html`** no seu gerenciador de arquivos (`file://`).
   - Todo o motor `O(1)`, estilos e scripts já estão embutidos em um único arquivo HTML autônomo que abre e funciona 100% offline em qualquer navegador moderno (Chrome, Edge, Firefox, Safari, Brave) em Windows, Linux ou macOS!
 
