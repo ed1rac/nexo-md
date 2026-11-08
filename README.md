@@ -9,6 +9,7 @@
 [![Tauri v2](https://img.shields.io/badge/Desktop-Tauri%20v2-24c8db.svg)](https://v2.tauri.app/)
 [![Vue 3](https://img.shields.io/badge/UI-Vue%203.5%20%2B%20TS-42b883.svg)](https://vuejs.org/)
 [![Autor](https://img.shields.io/badge/Autor-Edkallenn%20(%40ed1rac)-purple.svg)](https://github.com/ed1rac)
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-edkallenn-FFDD00?logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/edkallenn)
 
 *Roda **nativamente** em Desktop (Windows, Linux e macOS) com binário ultraleve e **também direto no navegador Web**!*
 
@@ -118,10 +119,12 @@ Como o **Rust + Tauri v2** vincula bibliotecas nativas do sistema operacional al
 
 O **NexoMD** é um software livre e de código aberto desenvolvido com dedicação à engenharia de software de alta performance. Se este projeto foi útil para os seus estudos, trabalho ou produtividade diária e você quiser apoiar o desenvolvimento contínuo:
 
-- 🇧🇷 **PIX (Qualquer valor)**:
+- ☕ **Buy Me a Coffee (Internacional / Cartão)**:
+  - 👉 **[https://buymeacoffee.com/edkallenn](https://buymeacoffee.com/edkallenn)**
+  - [![](https://img.shields.io/badge/☕_Buy_Me_a_Coffee-Apoiar_Projeto-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/edkallenn)
+- 🇧🇷 **PIX (Brasil — Qualquer valor, taxa zero)**:
   - **Chave PIX (E-mail)**: `edkevan@gmail.com`
   - **Titular**: Edkallenn
-- ☕ **Buy Me a Coffee / GitHub Sponsors**: Veja o perfil [@ed1rac](https://github.com/ed1rac)
 
 Muito obrigado pelo apoio! 🚀
 
@@ -131,6 +134,7 @@ Muito obrigado pelo apoio! 🚀
 
 Desenvolvido por **Edkallenn** (**[@ed1rac](https://github.com/ed1rac)**)
 - GitHub: [https://github.com/ed1rac](https://github.com/ed1rac)
+- Buy Me a Coffee: [https://buymeacoffee.com/edkallenn](https://buymeacoffee.com/edkallenn)
 - Contato / PIX: `edkevan@gmail.com`
 
 ---
