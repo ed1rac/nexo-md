@@ -1,0 +1,97 @@
+{
+  "app": {
+    "name": "NexoMD",
+    "tagline": "Editor Markdown Nativo em Rust + Tauri v2"
+  },
+  "menu": {
+    "file": "Arquivo",
+    "edit": "Editar",
+    "paragraph": "Parágrafo",
+    "format": "Formatar",
+    "view": "Exibir",
+    "themes": "Temas",
+    "preferences": "Preferências",
+    "newTab": "Novo Documento",
+    "openFile": "Abrir Arquivo...",
+    "openFolder": "Abrir Pasta (Metadados O(1))...",
+    "save": "Salvar (Atômico)",
+    "exportHtml": "Exportar HTML",
+    "undo": "Desfazer (Rope O(1))",
+    "redo": "Refazer (Rope O(1))"
+  },
+  "modes": {
+    "wysiwyg": "Visual (WYSIWYG)",
+    "split": "Dividido (Código + Preview)",
+    "source": "Código-Fonte",
+    "readonly": "Modo Leitura",
+    "focus": "Modo Foco",
+    "typewriter": "Máquina de Escrever"
+  },
+  "sidebar": {
+    "files": "Arquivos",
+    "search": "Busca Ripgrep",
+    "toc": "Sumário (TOC)",
+    "openWorkspace": "Abrir Pasta de Trabalho",
+    "noWorkspace": "Nenhuma pasta aberta. O NexoMD carrega apenas metadados (stat) sem ler o conteúdo de todos os arquivos para a RAM.",
+    "searchPlaceholder": "Buscar no workspace (grep-searcher)...",
+    "caseSensitive": "Diferenciar maiúsculas/minúsculas",
+    "noResults": "Nenhum resultado encontrado.",
+    "emptyToc": "Nenhum cabeçalho Markdown (# .. ######) encontrado."
+  },
+  "toolbar": {
+    "heading1": "Título 1 (Ctrl+1)",
+    "heading2": "Título 2 (Ctrl+2)",
+    "heading3": "Título 3 (Ctrl+3)",
+    "bold": "Negrito (Ctrl+B)",
+    "italic": "Itálico (Ctrl+I)",
+    "strikethrough": "Tachado (Ctrl+D)",
+    "inlineCode": "Código Inline (Ctrl+`)",
+    "codeBlock": "Bloco de Código",
+    "quote": "Citação",
+    "orderedList": "Lista Ordenada (Corrigido Bug F-02)",
+    "bulletList": "Lista com Marcadores",
+    "taskList": "Lista de Tarefas",
+    "table": "Inserir Tabela",
+    "mathBlock": "Bloco Matemático KaTeX",
+    "horizontalRule": "Linha Horizontal",
+    "link": "Inserir Link"
+  },
+  "status": {
+    "lines": "Linhas",
+    "words": "Palavras",
+    "chars": "Caracteres",
+    "readingTime": "Leitura",
+    "minutes": "min",
+    "saved": "Salvo (Atômico)",
+    "modified": "Não salvo (Diário Ativo)",
+    "blockIndex": "Índice O(1) Blocos",
+    "svgCache": "Cache SVG/KaTeX"
+  },
+  "preferences": {
+    "title": "Preferências do NexoMD",
+    "language": "Idioma da Interface (i18n Reativo)",
+    "theme": "Tema Visual",
+    "fontSize": "Tamanho da Fonte (px)",
+    "lineHeight": "Altura da Linha",
+    "autoSave": "Salvamento Automático Real (Corrigido Bug F-03)",
+    "autoSaveDelay": "Intervalo de Salvamento Automático (ms)",
+    "codeBlockLineNumbers": "Numeração de Linhas em Blocos de Código (Corrigido Bug F-04)",
+    "spellcheck": "Verificação Ortográfica Nativa",
+    "exportJson": "Exportar Configurações (JSON)",
+    "importJson": "Importar Configurações (JSON)",
+    "close": "Fechar"
+  },
+  "recovery": {
+    "bannerTitle": "Recuperação Automática de Sessão (Hot Exit)",
+    "bannerDesc": "Foram encontrados rascunhos não salvos da sessão anterior.",
+    "restore": "Restaurar Documento",
+    "discard": "Descartar"
+  },
+  "security": {
+    "blockedTitle": "Link Bloqueado pelo Validador de Segurança",
+    "blockedMessage": "O NexoMD bloqueou a execução de um caminho ou esquema potencialmente perigoso:"
+  },
+  "commandPalette": {
+    "placeholder": "Digite um comando (ex.: idioma, tema, modo dividido, lista ordenada, exportar)..."
+  }
+}

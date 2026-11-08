@@ -1,0 +1,21 @@
+# Dependências Node / Frontend
+node_modules/
+.pnpm-debug.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Artefatos de Build do Rust / Tauri (mantemos os binários de release em releases/ se desejado)
+src-tauri/target/
+src-tauri/WixTools/
+
+# Arquivos temporários do sistema e IDE
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.log
+*.nexo-tmp-*
