@@ -10,7 +10,7 @@
 [![Vue 3](https://img.shields.io/badge/UI-Vue%203.5%20%2B%20TS-42b883.svg)](https://vuejs.org/)
 [![Vercel App](https://img.shields.io/badge/Demo%20Online-Vercel%20App-000000?logo=vercel)](https://nexomarkdown.vercel.app/)
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live%20Web-222222?logo=github)](https://ed1rac.github.io/nexo-md/)
-[![Releases](https://img.shields.io/badge/Releases-Windows%20%7C%20Linux%20%7C%20macOS-success?logo=github)](https://github.com/ed1rac/nexo-md/releases/tag/v0.1.0)
+[![Releases](https://img.shields.io/badge/Releases-v0.2.0%20Windows%20%7C%20Linux%20%7C%20macOS-success?logo=github)](https://github.com/ed1rac/nexo-md/releases)
 [![Autor](https://img.shields.io/badge/Autor-Edkallenn%20(%40ed1rac)-purple.svg)](https://github.com/ed1rac)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-edkallenn-FFDD00?logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/edkallenn)
 
@@ -19,7 +19,7 @@
 ### 🌐 Acesse Agora no Navegador (Sem Instalar Nada):
 - 🚀 **App Online na Vercel**: **[https://nexomarkdown.vercel.app/](https://nexomarkdown.vercel.app/)**
 - 🌍 **Espelho no GitHub Pages**: **[https://ed1rac.github.io/nexo-md/](https://ed1rac.github.io/nexo-md/)**
-- 📦 **Downloads Nativos (Windows, Linux e macOS)**: **[Página Oficial de Releases (`v0.1.0`)](https://github.com/ed1rac/nexo-md/releases/tag/v0.1.0)**
+- 📦 **Downloads Nativos (Windows, Linux e macOS)**: **[Página Oficial de Releases (`v0.2.0`)](https://github.com/ed1rac/nexo-md/releases)**
 
 </div>
 
@@ -37,7 +37,7 @@ O **NexoMD** é um editor de Markdown moderno, rápido e seguro, concebido do ze
 
 ---
 
-## ✨ Funcionalidades Principais
+## ✨ Funcionalidades Principais (`v0.2.0`)
 
 ### 🚀 Motor e Desempenho
 - **Buffer de Texto em `Rope` (`ropey::Rope` em Rust)**: Inserções e deleções em `O(log N)` mesmo em arquivos de dezenas de megabytes.
@@ -47,14 +47,24 @@ O **NexoMD** é um editor de Markdown moderno, rápido e seguro, concebido do ze
 - **Abertura Instantânea de Pastas (`O(1)` Content I/O)**: Ao abrir um workspace no desktop, lê exclusivamente os metadados (`stat`) dos arquivos respeitando `.gitignore` via crate `ignore` (`< 3 ms`), carregando o conteúdo apenas sob demanda.
 - **Busca Global Ultrarrápida (`ripgrep` Core)**: Pesquisa textual e regex multithread direto no núcleo em Rust via `grep-searcher`.
 
-### 📝 Edição e Visualização (4 Modos Integrados)
-- **Modo Visual (`WYSIWYG`)**: Edição direta rica e limpa.
-- **Modo Dividido (`Split View`)**: Código-fonte Markdown à esquerda e Preview renderizado em tempo real à direita.
-- **Modo Código-Fonte (`Source Code`)**: Edição focada em sintaxe pura com fonte monoespaçada.
-- **Modo Somente Leitura (`Read-Only`)**: Trava de segurança para leitura, revisão e apresentação de documentos sem risco de edições acidentais.
-- **Barra de Ferramentas Completa**: Títulos (`H1`–`H3`), Negrito, Itálico, Tachado, Código Inline, **Lista Ordenada (`1. 2. 3.`)**, Lista com Marcadores, Lista de Tarefas (`- [x]`), Bloco de Código, Bloco Matemático KaTeX, Tabelas GFM e Citações.
-- **Numeração de Linhas em Blocos de Código**: Numeração lateral limpa e configurável em todos os blocos `<pre><code>`, com badge automático da linguagem.
-- **Sumário Automático em Tempo Real (`TOC`)**: Extração instantânea da hierarquia de cabeçalhos (`H1`–`H6`) com indicação da linha exata.
+### 📝 Edição, Formatação, Importação e Exportação Completa
+- **4 Modos de Visão Integrados**: **Visual (`WYSIWYG`)**, **Dividido (`Split View`)**, **Código-Fonte (`Source Code`)** e **Somente Leitura (`Read-Only`)**, além de **Modo Foco** e **Modo Máquina de Escrever**.
+- **Múltiplos Documentos em Abas (`+` / `Ctrl+N`)**: Criação limpa de novos documentos (`Sem-Titulo-N.md`), renomeação com duplo clique e fechamento individual (`×` / `Ctrl+W`).
+- **Localizar (`Ctrl+F`) e Localizar e Substituir (`Ctrl+H`)**: Busca incremental com *Case Sensitive* (`Aa`), *Expressões Regulares* (`.*`), contador de ocorrências e substituição individual ou em lote.
+- **Exportação Multiformato Nativa**:
+  - **PDF**: Folha de impressão A4 dedicada com tipografia e blocos estilizados.
+  - **DOCX (OpenXML ZIP)**: Geração direta de pacote `.docx` compatível com Word / LibreOffice.
+  - **DOC (Word HTML/XML)**: Documento `.doc` estilizado.
+  - **RTF (Rich Text Format)**: Geração `.rtf` com escape Unicode completo.
+  - **HTML (`.html`)** e **Markdown (`.md`)**.
+- **Importação Inteligente (`Ctrl+O` ou Drag & Drop)**: Abre `.md`, `.markdown`, `.txt` e converte arquivos `.html` / `.htm` automaticamente para Markdown.
+- **Controle de Final de Linha (`LF`, `CRLF`, `CR`)**: Seletor interativo na barra de status e no menu **Arquivo**, sincronizado com o motor Rust.
+- **Área de Transferência Avançada**: **Copiar como Markdown (`Ctrl+Shift+C`)**, **Copiar como HTML** e **Colar como Texto Simples (`Ctrl+Shift+V`)**.
+- **Hierarquia Completa de Parágrafos (`H1` a `H6` + `P`)**: Botões dedicados para `H1`..`H6`, **Promover Título (`Ctrl+=`)**, **Rebaixar Título (`Ctrl+-`)**, **Duplicar Seleção/Linha (`Ctrl+Shift+D`)**, **Criar Parágrafo Acima/Abaixo** e **Apagar Parágrafo (`Ctrl+Shift+K`)**.
+- **Seletor Visual de Tamanho de Tabela (`10×10`)**: Grade interativa `Linhas × Colunas` + escolha de alinhamento (`Esquerda`, `Centro`, `Direita`) ao inserir tabelas.
+- **Formatação Inline Estendida**: **Negrito**, *Itálico*, **Sublinhado (`<u>`)**, ~~Tachado~~, **Highlight / Realce (`==texto==`)**, **Sobrescrito (`^texto^`)**, **Subscrito (`~texto~`)**, Código Inline e **Limpar Formatação (`Ctrl+\`)**.
+- **Inserção de Elementos Ricos**: **Régua Horizontal (`---`)**, **Modal de Link (`Ctrl+K`)**, **Modal de Imagem (`Ctrl+Shift+I` — URL ou Upload Base64)**, **Bloco de HTML (`<div>`)**, **Alertas GitHub (`[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`)**, **Frontmatter YAML** e **Notas de Rodapé (`[^1]`)**.
+- **Numeração de Linhas no Editor de Código-Fonte e em Blocos de Código** + **Sumário Automático (`TOC`) Clicável**.
 
 ### 🛡️ Confiabilidade, Segurança e Internacionalização
 - **Salvamento Atômico (`Atomic Write`)**: Gravação em arquivo temporário no mesmo volume + `fsync` (`sync_all`) + renomeação atômica, impedindo arquivos truncados (0 bytes) em quedas de energia.
@@ -83,12 +93,12 @@ O **NexoMD** oferece **5 formas diferentes de execução**, desde o uso imediato
 - 🚀 **A) Online direto na Web (Vercel / GitHub Pages)**:
   - Acesse **[https://nexomarkdown.vercel.app/](https://nexomarkdown.vercel.app/)** ou **[https://ed1rac.github.io/nexo-md/](https://ed1rac.github.io/nexo-md/)** em qualquer dispositivo.
 - 🪟 **B) Executável Nativo Windows (Pronto para Uso)**:
-  - Baixe na **[Página de Releases](https://github.com/ed1rac/nexo-md/releases/tag/v0.1.0)** ou abra a pasta [`releases/windows/`](./releases/windows/) e dê **dois cliques** em **`nexo-md.exe`** (`6,65 MB`).
+  - Baixe na **[Página de Releases (`v0.2.0`)](https://github.com/ed1rac/nexo-md/releases)** ou abra a pasta [`releases/windows/`](./releases/windows/) e dê **dois cliques** em **`nexo-md.exe`** (`6,68 MB`).
   - Roda nativamente no Windows 10/11 consumindo apenas ~35 MB de RAM, sem precisar de Node.js ou Rust instalados.
 - 🐧 **C) Executável Nativo Linux (`x86_64`)**:
-  - Disponível em [`releases/linux-x64/nexo-md`](./releases/linux-x64/nexo-md) e na **[Página de Releases](https://github.com/ed1rac/nexo-md/releases/tag/v0.1.0)** (`chmod +x nexo-md && ./nexo-md`).
+  - Disponível em [`releases/linux-x64/nexo-md`](./releases/linux-x64/nexo-md) e na **[Página de Releases (`v0.2.0`)](https://github.com/ed1rac/nexo-md/releases)** (`chmod +x nexo-md && ./nexo-md`).
 - 🍎 **D) Executável Nativo macOS (Apple Silicon `arm64` M1/M2/M3/M4 e Intel `x86_64`)**:
-  - Disponível em [`releases/macos-arm64/nexo-md`](./releases/macos-arm64/nexo-md) e [`releases/macos-x64/nexo-md`](./releases/macos-x64/nexo-md) ou na **[Página de Releases](https://github.com/ed1rac/nexo-md/releases/tag/v0.1.0)**.
+  - Disponível em [`releases/macos-arm64/nexo-md`](./releases/macos-arm64/nexo-md) e [`releases/macos-x64/nexo-md`](./releases/macos-x64/nexo-md) ou na **[Página de Releases (`v0.2.0`)](https://github.com/ed1rac/nexo-md/releases)**.
 - 🌐 **E) Versão Web Autônoma Offline (*Single-File Web App*)**:
   - Basta abrir a pasta [`dist-web/`](./dist-web/) e dar **dois cliques** diretamente em **`index.html`** no seu gerenciador de arquivos (`file://`).
   - Todo o motor `O(1)`, estilos e scripts já estão embutidos em um único arquivo HTML autônomo que abre e funciona 100% offline em qualquer navegador moderno (Chrome, Edge, Firefox, Safari, Brave) em Windows, Linux ou macOS!

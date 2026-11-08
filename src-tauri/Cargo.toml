@@ -1,6 +1,6 @@
 [package]
 name = "nexomd"
-version = "0.1.0"
+version = "0.2.0"
 description = "NexoMD — High-performance Hybrid Native Markdown Editor Core in Rust"
 authors = ["Edkallenn (@ed1rac) <edkevan@gmail.com>"]
 license = "GPL-3.0-or-later"

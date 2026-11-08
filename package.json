@@ -1,6 +1,6 @@
 {
   "name": "nexomd",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "NexoMD — Editor Markdown Híbrido Nativo em Rust + Tauri v2 + Vue 3 + TypeScript",
   "author": "Edkallenn (@ed1rac) <edkevan@gmail.com>",
   "license": "GPL-3.0-or-later",

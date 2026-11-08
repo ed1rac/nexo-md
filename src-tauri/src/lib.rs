@@ -130,6 +130,7 @@ fn save_document_atomic(
     let content = doc.rope.to_string();
     let new_sha = write_file_atomic(path, &content, &doc.line_ending, doc.has_bom)?;
     doc.saved_sha256 = new_sha;
+    doc.saved_line_ending = doc.line_ending.clone();
 
     // Remove o snapshot de Crash Recovery após gravação atômica confirmada
     let _ = state.recovery_journal.remove_snapshot(&doc.id);
@@ -166,6 +167,59 @@ fn clear_recovery_snapshot(state: State<'_, AppState>, doc_id: String) -> Result
 }
 
 #[tauri::command]
+fn set_document_line_ending(
+    state: State<'_, AppState>,
+    doc_id: String,
+    line_ending: String,
+) -> Result<DocumentView, String> {
+    let mut docs = state
+        .doc_manager
+        .docs
+        .lock()
+        .map_err(|_| "Falha ao adquirir lock de documentos".to_string())?;
+
+    let doc = docs
+        .get_mut(&doc_id)
+        .ok_or_else(|| format!("Documento '{}' não encontrado.", doc_id))?;
+
+    doc.set_line_ending(&line_ending);
+    Ok(doc.to_view())
+}
+
+#[tauri::command]
+fn rename_document(
+    state: State<'_, AppState>,
+    doc_id: String,
+    filename: String,
+) -> Result<DocumentView, String> {
+    let mut docs = state
+        .doc_manager
+        .docs
+        .lock()
+        .map_err(|_| "Falha ao adquirir lock de documentos".to_string())?;
+
+    let doc = docs
+        .get_mut(&doc_id)
+        .ok_or_else(|| format!("Documento '{}' não encontrado.", doc_id))?;
+
+    doc.set_filename(&filename);
+    Ok(doc.to_view())
+}
+
+#[tauri::command]
+fn close_document(state: State<'_, AppState>, doc_id: String) -> Result<(), String> {
+    let mut docs = state
+        .doc_manager
+        .docs
+        .lock()
+        .map_err(|_| "Falha ao adquirir lock de documentos".to_string())?;
+
+    docs.remove(&doc_id);
+    let _ = state.recovery_journal.remove_snapshot(&doc_id);
+    Ok(())
+}
+
+#[tauri::command]
 fn validate_and_open_link(href: String) -> LinkValidationResult {
     validate_link_target(&href)
 }
@@ -186,6 +240,9 @@ pub fn run() {
             undo_document,
             redo_document,
             save_document_atomic,
+            set_document_line_ending,
+            rename_document,
+            close_document,
             scan_workspace_metadata,
             search_in_workspace,
             list_recovery_snapshots,
@@ -229,6 +286,46 @@ mod tests {
         assert!(!view3.is_dirty);
         assert!(view3.can_redo);
         assert_eq!(view3.toc.len(), 1);
+    }
+
+    #[test]
+    fn test_line_endings_and_rename() {
+        let mut doc = DocumentBuffer::new_from_str(
+            "doc-2".to_string(),
+            None,
+            "Sem-Titulo-1.md".to_string(),
+            "Linha 1\nLinha 2",
+            "UTF-8".to_string(),
+            "LF".to_string(),
+            false,
+        );
+        assert!(!doc.to_view().is_dirty);
+        doc.set_line_ending("CRLF");
+        assert_eq!(doc.to_view().line_ending, "CRLF");
+        assert!(doc.to_view().is_dirty);
+        doc.set_line_ending("CR");
+        assert_eq!(doc.to_view().line_ending, "CR");
+        assert!(doc.to_view().is_dirty);
+        doc.set_line_ending("LF");
+        assert!(!doc.to_view().is_dirty);
+        doc.set_filename("Novo-Arquivo.md");
+        assert_eq!(doc.to_view().filename, "Novo-Arquivo.md");
+
+        let (_, _, le_cr, _) = decode_bytes(b"abc\rdef");
+        assert_eq!(le_cr, "CR");
+        let (_, _, le_crlf, _) = decode_bytes(b"abc\r\ndef");
+        assert_eq!(le_crlf, "CRLF");
+
+        // Verifica escrita atômica com CRLF e CR
+        let tmp_dir = std::env::temp_dir();
+        let test_path = tmp_dir.join("nexomd_test_le.md");
+        write_file_atomic(&test_path, "A\nB", "CRLF", false).unwrap();
+        let bytes_crlf = std::fs::read(&test_path).unwrap();
+        assert_eq!(bytes_crlf, b"A\r\nB");
+        write_file_atomic(&test_path, "A\nB", "CR", false).unwrap();
+        let bytes_cr = std::fs::read(&test_path).unwrap();
+        assert_eq!(bytes_cr, b"A\rB");
+        let _ = std::fs::remove_file(&test_path);
     }
 
     #[test]

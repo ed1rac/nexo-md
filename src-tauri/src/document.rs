@@ -67,6 +67,7 @@ pub struct DocumentBuffer {
     pub filename: String,
     pub rope: Rope,
     pub saved_sha256: String,
+    pub saved_line_ending: String,
     pub encoding: String,
     pub line_ending: String,
     pub has_bom: bool,
@@ -94,6 +95,7 @@ impl DocumentBuffer {
             filename,
             rope,
             saved_sha256: sha256,
+            saved_line_ending: line_ending.clone(),
             encoding,
             line_ending,
             has_bom,
@@ -159,6 +161,24 @@ impl DocumentBuffer {
         }
     }
 
+    /// Altera o final de linha (`LF`, `CRLF` ou `CR`) do buffer.
+    pub fn set_line_ending(&mut self, line_ending: &str) {
+        let normalized = match line_ending.to_uppercase().as_str() {
+            "CRLF" => "CRLF".to_string(),
+            "CR" => "CR".to_string(),
+            _ => "LF".to_string(),
+        };
+        self.line_ending = normalized;
+    }
+
+    /// Renomeia o arquivo em memória.
+    pub fn set_filename(&mut self, filename: &str) {
+        let trimmed = filename.trim();
+        if !trimmed.is_empty() {
+            self.filename = trimmed.to_string();
+        }
+    }
+
     /// Exporta a visão atual do documento com estatísticas e sumário (TOC).
     pub fn to_view(&self) -> DocumentView {
         let content = self.rope.to_string();
@@ -173,7 +193,7 @@ impl DocumentBuffer {
             encoding: self.encoding.clone(),
             line_ending: self.line_ending.clone(),
             has_bom: self.has_bom,
-            is_dirty: current_sha256 != self.saved_sha256,
+            is_dirty: current_sha256 != self.saved_sha256 || self.line_ending != self.saved_line_ending,
             sha256: current_sha256,
             can_undo: !self.undo_stack.is_empty(),
             can_redo: !self.redo_stack.is_empty(),
@@ -190,7 +210,7 @@ pub fn compute_sha256(bytes: &[u8]) -> String {
     format!("{:x}", hasher.finalize())
 }
 
-/// Detecta codificação, BOM e quebra de linha (`LF` vs `CRLF`) de um buffer bruto.
+/// Detecta codificação, BOM e quebra de linha (`LF`, `CRLF` ou `CR`) de um buffer bruto.
 pub fn decode_bytes(raw: &[u8]) -> (String, String, String, bool) {
     // Verifica UTF-8 BOM
     let (has_bom, slice) = if raw.starts_with(&[0xEF, 0xBB, 0xBF]) {
@@ -207,11 +227,16 @@ pub fn decode_bytes(raw: &[u8]) -> (String, String, String, bool) {
 
     let line_ending = if text.contains("\r\n") {
         "CRLF".to_string()
+    } else if text.contains('\r') {
+        "CR".to_string()
     } else {
         "LF".to_string()
     };
 
-    (text, encoding.name().to_string(), line_ending, has_bom)
+    // Normaliza internamente para LF no Rope para edição consistente
+    let normalized_text = text.replace("\r\n", "\n").replace('\r', "\n");
+
+    (normalized_text, encoding.name().to_string(), line_ending, has_bom)
 }
 
 /// Analisa estatísticas e extrai cabeçalhos Markdown em passo único via `pulldown-cmark` SIMD.
@@ -324,11 +349,14 @@ pub fn write_file_atomic(target: &Path, content: &str, line_ending: &str, has_bo
     );
     let temp_path = parent.join(temp_name);
 
-    // Normaliza quebra de linha conforme preferência do documento
+    // Normaliza quebra de linha conforme preferência do documento (LF, CRLF ou CR)
+    let lf_only = content.replace("\r\n", "\n").replace('\r', "\n");
     let normalized = if line_ending.eq_ignore_ascii_case("CRLF") {
-        content.replace("\r\n", "\n").replace('\n', "\r\n")
+        lf_only.replace('\n', "\r\n")
+    } else if line_ending.eq_ignore_ascii_case("CR") {
+        lf_only.replace('\n', "\r")
     } else {
-        content.replace("\r\n", "\n")
+        lf_only
     };
 
     {

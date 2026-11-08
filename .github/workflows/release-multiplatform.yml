@@ -63,7 +63,7 @@ jobs:
           push: true
           tags: |
             ghcr.io/ed1rac/nexo-md:latest
-            ghcr.io/ed1rac/nexo-md:0.1.0
+            ghcr.io/ed1rac/nexo-md:0.2.0
 
   build-desktop:
     name: 🖥️ Build Nativo (${{ matrix.os }} - ${{ matrix.target }})
