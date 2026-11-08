@@ -19,7 +19,7 @@ pub struct AppState {
 }
 
 #[tauri::command]
-pub fn create_document(
+fn create_document(
     state: State<'_, AppState>,
     filename: String,
     initial_content: String,
@@ -28,12 +28,12 @@ pub fn create_document(
 }
 
 #[tauri::command]
-pub fn open_document(state: State<'_, AppState>, path: String) -> Result<DocumentView, String> {
+fn open_document(state: State<'_, AppState>, path: String) -> Result<DocumentView, String> {
     state.doc_manager.open_from_disk(&path)
 }
 
 #[tauri::command]
-pub fn update_document_text(
+fn update_document_text(
     state: State<'_, AppState>,
     doc_id: String,
     content: String,
@@ -67,7 +67,7 @@ pub fn update_document_text(
 }
 
 #[tauri::command]
-pub fn undo_document(state: State<'_, AppState>, doc_id: String) -> Result<DocumentView, String> {
+fn undo_document(state: State<'_, AppState>, doc_id: String) -> Result<DocumentView, String> {
     let mut docs = state
         .doc_manager
         .docs
@@ -83,7 +83,7 @@ pub fn undo_document(state: State<'_, AppState>, doc_id: String) -> Result<Docum
 }
 
 #[tauri::command]
-pub fn redo_document(state: State<'_, AppState>, doc_id: String) -> Result<DocumentView, String> {
+fn redo_document(state: State<'_, AppState>, doc_id: String) -> Result<DocumentView, String> {
     let mut docs = state
         .doc_manager
         .docs
@@ -99,7 +99,7 @@ pub fn redo_document(state: State<'_, AppState>, doc_id: String) -> Result<Docum
 }
 
 #[tauri::command]
-pub fn save_document_atomic(
+fn save_document_atomic(
     state: State<'_, AppState>,
     doc_id: String,
     target_path: Option<String>,
@@ -138,7 +138,7 @@ pub fn save_document_atomic(
 }
 
 #[tauri::command]
-pub fn scan_workspace_metadata(
+fn scan_workspace_metadata(
     root_dir: String,
     max_entries: Option<usize>,
 ) -> Result<Vec<WorkspaceEntry>, String> {
@@ -146,7 +146,7 @@ pub fn scan_workspace_metadata(
 }
 
 #[tauri::command]
-pub fn search_in_workspace(
+fn search_in_workspace(
     root_dir: String,
     query: String,
     case_sensitive: bool,
@@ -156,17 +156,17 @@ pub fn search_in_workspace(
 }
 
 #[tauri::command]
-pub fn list_recovery_snapshots(state: State<'_, AppState>) -> Result<Vec<RecoverySnapshot>, String> {
+fn list_recovery_snapshots(state: State<'_, AppState>) -> Result<Vec<RecoverySnapshot>, String> {
     state.recovery_journal.list_snapshots()
 }
 
 #[tauri::command]
-pub fn clear_recovery_snapshot(state: State<'_, AppState>, doc_id: String) -> Result<(), String> {
+fn clear_recovery_snapshot(state: State<'_, AppState>, doc_id: String) -> Result<(), String> {
     state.recovery_journal.remove_snapshot(&doc_id)
 }
 
 #[tauri::command]
-pub fn validate_and_open_link(href: String) -> LinkValidationResult {
+fn validate_and_open_link(href: String) -> LinkValidationResult {
     validate_link_target(&href)
 }
 
@@ -203,7 +203,7 @@ mod tests {
 
     #[test]
     fn test_rope_o1_undo_redo_and_toc() {
-        let mut doc = DocumentBuffer::new_From_str(
+        let mut doc = DocumentBuffer::new_from_str(
             "doc-1".to_string(),
             None,
             "teste.md".to_string(),

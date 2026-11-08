@@ -77,7 +77,7 @@ pub struct DocumentBuffer {
 
 impl DocumentBuffer {
     /// Cria um novo buffer em memória a partir de uma string.
-    pub fn new_From_str(
+    pub fn new_from_str(
         id: String,
         path: Option<PathBuf>,
         filename: String,
@@ -382,7 +382,7 @@ impl DocumentManager {
             .unwrap_or("Untitled.md")
             .to_string();
 
-        let buffer = DocumentBuffer::new_From_str(
+        let buffer = DocumentBuffer::new_from_str(
             id.clone(),
             Some(path),
             filename,
@@ -403,7 +403,7 @@ impl DocumentManager {
 
     pub fn create_memory_doc(&self, filename: &str, initial_content: &str) -> Result<DocumentView, String> {
         let id = Uuid::new_v4().to_string();
-        let buffer = DocumentBuffer::new_From_str(
+        let buffer = DocumentBuffer::new_from_str(
             id.clone(),
             None,
             filename.to_string(),
