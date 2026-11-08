@@ -68,6 +68,17 @@ O **NexoMD** é um editor de Markdown moderno, rápido e seguro, concebido do ze
 
 ## 🖥️ Como Executar (Web e Desktop Nativo)
 
+O **NexoMD** oferece **5 formas diferentes de execução**, desde o uso imediato com dois cliques (sem instalar nada) até o ambiente completo de desenvolvimento e compilação nativa:
+
+### 0. Execução Imediata (Sem Instalar Dependências / Zero Configuração)
+
+- 🪟 **A) Executável Nativo Windows (Pronto para Uso)**:
+  - Basta abrir a pasta [`releases/windows/`](./releases/windows/) e dar **dois cliques** em **`nexo-md.exe`** (`6,65 MB`, acompanhado da `WebView2Loader.dll` na mesma pasta).
+  - Roda nativamente no Windows 10/11 consumindo apenas ~35 MB de RAM, sem precisar de Node.js ou Rust instalados.
+- 🌐 **B) Versão Web Autônoma Offline (*Single-File Web App*)**:
+  - Basta abrir a pasta [`dist-web/`](./dist-web/) e dar **dois cliques** diretamente em **`index.html`** no seu gerenciador de arquivos (`file://`).
+  - Todo o motor `O(1)`, estilos e scripts já estão embutidos em um único arquivo HTML autônomo que abre e funciona 100% offline em qualquer navegador moderno (Chrome, Edge, Firefox, Safari, Brave) em Windows, Linux ou macOS!
+
 ### 1. Modo Navegador Web (Desenvolvimento ou Build Estático)
 
 O NexoMD mantém compatibilidade total com qualquer navegador moderno:
@@ -76,13 +87,13 @@ O NexoMD mantém compatibilidade total com qualquer navegador moderno:
 # Instalar dependências
 npm install
 
-# Rodar servidor de desenvolvimento no navegador (http://localhost:1420)
+# Rodar servidor de desenvolvimento no navegador com Hot-Reload (http://localhost:1420)
 npm run dev
 
-# Gerar versão estática pronta para hospedar (pasta dist-web/)
+# Gerar versão estática pronta para hospedar em GitHub Pages / Vercel / Netlify (pasta dist-web/)
 npm run build:web
 
-# Testar a versão estática compilada do navegador
+# Testar a versão estática compilada do navegador via servidor HTTP local (http://localhost:4173)
 npm run preview:web
 ```
 
@@ -91,11 +102,17 @@ npm run preview:web
 Requer [Rust (`rustup` / `cargo`)](https://rustup.rs/) instalado:
 
 ```bash
-# Executar os testes unitários do motor nativo em Rust
-cd src-tauri && cargo test && cd ..
+# Executar em modo de desenvolvimento Desktop Nativo (abre a janela nativa com Hot-Reload)
+npx tauri dev
+
+# Executar os testes unitários do motor nativo em Rust (Rope O(1) + Validador de Segurança)
+cd src-tauri && cargo test --lib && cd ..
 
 # Compilar o binário nativo de produção
 npm run build:native
+
+# Ou gerar o executável autônomo / pacotes via Tauri CLI
+npx tauri build --no-bundle
 ```
 
 O executável nativo otimizado (`release`) é gerado em:
@@ -119,9 +136,17 @@ Como o **Rust + Tauri v2** vincula bibliotecas nativas do sistema operacional al
 
 O **NexoMD** é um software livre e de código aberto desenvolvido com dedicação à engenharia de software de alta performance. Se este projeto foi útil para os seus estudos, trabalho ou produtividade diária e você quiser apoiar o desenvolvimento contínuo:
 
-- ☕ **Buy Me a Coffee (Internacional / Cartão)**:
+- ☕ **Buy Me a Coffee (Internacional / Cartão / QR Code)**:
   - 👉 **[https://buymeacoffee.com/edkallenn](https://buymeacoffee.com/edkallenn)**
   - [![](https://img.shields.io/badge/☕_Buy_Me_a_Coffee-Apoiar_Projeto-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/edkallenn)
+  - Escaneie o QR Code abaixo com a câmera do celular para abrir diretamente:
+
+<div align="center">
+  <a href="https://buymeacoffee.com/edkallenn" target="_blank">
+    <img src="./bmc_qr.png" alt="Buy Me a Coffee QR Code — Edkallenn (@ed1rac)" width="220" />
+  </a>
+</div>
+
 - 🇧🇷 **PIX (Brasil — Qualquer valor, taxa zero)**:
   - **Chave PIX (E-mail)**: `edkevan@gmail.com`
   - **Titular**: Edkallenn
