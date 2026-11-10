@@ -173,17 +173,19 @@ export function exportAsHtml(filename: string, renderedHtml: string): void {
  * Gera HTML otimizado para impressão PDF sem cabeçalhos e rodapés do navegador.
  */
 export function generatePdfPrintHtml(filename: string, renderedHtml: string): string {
-  const title = stripExtension(filename)
+  const _ = filename
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>${escapeXml(title)}</title>
+  <title></title>
   <style>
     ${STANDALONE_DOC_STYLES}
     @page {
       size: A4 portrait;
-      margin: 0;
+      margin: 15mm;
+    }
+    @page {
       @top-left { content: none !important; }
       @top-center { content: none !important; }
       @top-right { content: none !important; }
@@ -192,24 +194,19 @@ export function generatePdfPrintHtml(filename: string, renderedHtml: string): st
       @bottom-right { content: none !important; }
     }
     @page :left {
-      margin: 0;
-      @top-left { content: none !important; }
-      @top-center { content: none !important; }
-      @top-right { content: none !important; }
-      @bottom-left { content: none !important; }
-      @bottom-center { content: none !important; }
-      @bottom-right { content: none !important; }
+      margin: 15mm;
     }
     @page :right {
-      margin: 0;
-      @top-left { content: none !important; }
-      @top-center { content: none !important; }
-      @top-right { content: none !important; }
-      @bottom-left { content: none !important; }
-      @bottom-center { content: none !important; }
-      @bottom-right { content: none !important; }
+      margin: 15mm;
+    }
+    @page :first {
+      margin: 15mm;
     }
     @media print {
+      @page {
+        size: A4 portrait;
+        margin: 15mm;
+      }
       html, body {
         margin: 0 !important;
         padding: 0 !important;
@@ -219,10 +216,10 @@ export function generatePdfPrintHtml(filename: string, renderedHtml: string): st
         print-color-adjust: exact !important;
       }
       .print-page-wrapper {
-        padding: 16mm 18mm !important;
+        padding: 0 !important;
         box-sizing: border-box !important;
-        max-width: 820px !important;
-        margin: 0 auto !important;
+        max-width: 100% !important;
+        margin: 0 !important;
       }
       pre, blockquote, table, tr, img, .katex-block {
         page-break-inside: avoid !important;
@@ -232,7 +229,7 @@ export function generatePdfPrintHtml(filename: string, renderedHtml: string): st
         page-break-after: avoid !important;
         break-after: avoid !important;
       }
-      header, footer, nav {
+      header, footer, nav, .no-print {
         display: none !important;
       }
     }
@@ -253,13 +250,10 @@ export function exportAsPdf(filename: string, renderedHtml: string): void {
   const printHtml = generatePdfPrintHtml(filename, renderedHtml)
 
   const iframe = document.createElement('iframe')
-  iframe.style.position = 'fixed'
-  iframe.style.right = '0'
-  iframe.style.bottom = '0'
-  iframe.style.width = '0'
-  iframe.style.height = '0'
-  iframe.style.border = '0'
-  iframe.style.visibility = 'hidden'
+  iframe.setAttribute(
+    'style',
+    'position: fixed; left: -9999px; top: -9999px; width: 1024px; height: 768px; border: 0; opacity: 0; pointer-events: none;'
+  )
   document.body.appendChild(iframe)
 
   const doc = iframe.contentWindow?.document
@@ -277,9 +271,9 @@ export function exportAsPdf(filename: string, renderedHtml: string): void {
       } finally {
         setTimeout(() => {
           if (iframe.parentNode) iframe.parentNode.removeChild(iframe)
-        }, 3000)
+        }, 5000)
       }
-    }, 350)
+    }, 400)
   } else {
     window.print()
   }
@@ -741,6 +735,10 @@ export function generateDocxUint8Array(filename: string, markdown: string): Uint
     bodyElementsXml.push(
       `<w:p><w:pPr><w:spacing w:after="120"/></w:pPr>${markdownInlineToWordRuns(rawLine, '<w:sz w:val="22"/>')}</w:p>`
     )
+  }
+
+  if (bodyElementsXml.length === 0) {
+    bodyElementsXml.push('<w:p/>')
   }
 
   const contentTypesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>

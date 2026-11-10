@@ -727,6 +727,30 @@ export async function redoActiveDocument(): Promise<void> {
   }
 }
 
+let wysiwygHtmlGetter: (() => string | null) | null = null
+
+export function setWysiwygSyncGetter(getter: () => string | null): void {
+  wysiwygHtmlGetter = getter
+}
+
+export function syncWysiwygContentIfActive(): void {
+  if (editorStore.mode !== 'wysiwyg' || !wysiwygHtmlGetter) return
+  const html = wysiwygHtmlGetter()
+  const doc = activeDocument.value
+  if (html && doc) {
+    const md = htmlToMarkdown(html)
+    if (md !== doc.content) {
+      doc.content = md
+      doc.isDirty = true
+      const { stats, toc } = computeLocalAnalysis(md)
+      doc.stats = stats
+      doc.toc = toc
+      blockIndex.syncFromMarkdown(md)
+      editorStore.indexStats = blockIndex.getStats()
+    }
+  }
+}
+
 /**
  * Salva atomicamente o documento no disco ou armazenamento local.
  * Se isAutoSave for true e o arquivo não possuir caminho salvo, grava no cache local para não interromper a digitação.
@@ -736,6 +760,26 @@ export async function saveActiveDocument(isAutoSave = false): Promise<void> {
   const doc = activeDocument.value
   if (!doc) return
 
+  syncWysiwygContentIfActive()
+
+  // Se o documento já tem um FileSystemFileHandle no navegador (Web), grava diretamente nele
+  if (doc.fileHandle) {
+    try {
+      const writable = await doc.fileHandle.createWritable()
+      await writable.write(doc.content)
+      await writable.close()
+      doc.sha256 = fastHash(doc.content)
+      doc.isDirty = false
+      if (!isAutoSave) {
+        showToast(`Salvo: ${doc.filename}`)
+      }
+      return
+    } catch (err) {
+      console.warn('Falha ao gravar no fileHandle:', err)
+    }
+  }
+
+  // Se não possuir caminho salvo no disco
   if (!doc.path) {
     if (isAutoSave) {
       if (typeof localStorage !== 'undefined') {
@@ -747,6 +791,7 @@ export async function saveActiveDocument(isAutoSave = false): Promise<void> {
     return
   }
 
+  // No Tauri Desktop: grava atomicamente no caminho em doc.path
   if (isTauriRuntime()) {
     try {
       const view = await invokeTauri<any>('save_document_atomic', {
@@ -756,7 +801,9 @@ export async function saveActiveDocument(isAutoSave = false): Promise<void> {
       })
       Object.assign(doc, view)
       doc.isDirty = false
-      showToast(`Salvo: ${doc.filename}`)
+      if (!isAutoSave) {
+        showToast(`Salvo: ${doc.filename}`)
+      }
       return
     } catch (err) {
       showToast(`Erro ao salvar: ${String(err)}`)
@@ -764,26 +811,16 @@ export async function saveActiveDocument(isAutoSave = false): Promise<void> {
     }
   }
 
-  if (doc.fileHandle) {
-    try {
-      const writable = await doc.fileHandle.createWritable()
-      await writable.write(doc.content)
-      await writable.close()
-      doc.sha256 = fastHash(doc.content)
-      doc.isDirty = false
-      showToast(`Salvo: ${doc.filename}`)
-      return
-    } catch {
-      // fallback localStorage
+  // No navegador Web sem fileHandle:
+  if (isAutoSave) {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(`nexomd.saved.${doc.filename}`, doc.content)
     }
+    return
   }
 
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem(`nexomd.saved.${doc.filename}`, doc.content)
-  }
-  doc.sha256 = fastHash(doc.content)
-  doc.isDirty = false
-  showToast(`Salvo: ${doc.filename}`)
+  // Salvamento manual no navegador sem fileHandle aciona o diálogo para baixar/salvar
+  await saveActiveDocumentAs()
 }
 
 /**
@@ -792,6 +829,8 @@ export async function saveActiveDocument(isAutoSave = false): Promise<void> {
 export async function saveActiveDocumentAs(): Promise<void> {
   const doc = activeDocument.value
   if (!doc) return
+
+  syncWysiwygContentIfActive()
 
   if (isTauriRuntime()) {
     try {
@@ -829,17 +868,20 @@ export async function saveActiveDocumentAs(): Promise<void> {
       await writable.close()
       doc.fileHandle = handle
       doc.filename = handle.name
+      doc.path = handle.name
       doc.sha256 = fastHash(doc.content)
       doc.isDirty = false
       showToast(`Salvo: ${doc.filename}`)
       return
     } catch (err: any) {
       if (err.name === 'AbortError') return
+      console.warn('showSaveFilePicker falhou, usando download fallback:', err)
     }
   }
 
   // Fallback download direto
   exportAsMarkdown(doc.filename, doc.content, doc.lineEnding)
+  doc.path = doc.filename
   doc.sha256 = fastHash(doc.content)
   doc.isDirty = false
   showToast(`Baixado: ${doc.filename}`)
@@ -997,11 +1039,14 @@ export async function exportActiveDocument(
 ): Promise<void> {
   const doc = activeDocument.value
   if (!doc) return
+
+  syncWysiwygContentIfActive()
+
   const html = renderMarkdownToHtml(doc.content)
 
   if (format === 'pdf') {
     exportAsPdf(doc.filename, html)
-    showToast('Diálogo de impressão PDF acionado!')
+    showToast('Diálogo de impressão PDF acionado! Selecione "Salvar como PDF" no destino.', 3500)
     return
   }
 
@@ -1010,7 +1055,7 @@ export async function exportActiveDocument(
   let outFilename = ''
   let filterName = ''
   let filterExt = ''
-  let mimeType = ''
+  let cleanMime = ''
   let fileBytes: Uint8Array
 
   switch (format) {
@@ -1018,7 +1063,7 @@ export async function exportActiveDocument(
       outFilename = `${baseTitle}.md`
       filterName = 'Documento Markdown (*.md)'
       filterExt = 'md'
-      mimeType = 'text/markdown;charset=utf-8'
+      cleanMime = 'text/markdown'
       const normalized = normalizeLineEndings(doc.content, doc.lineEnding)
       fileBytes = new TextEncoder().encode(normalized)
       break
@@ -1027,7 +1072,7 @@ export async function exportActiveDocument(
       outFilename = `${baseTitle}.html`
       filterName = 'Página Web (*.html)'
       filterExt = 'html'
-      mimeType = 'text/html;charset=utf-8'
+      cleanMime = 'text/html'
       const standalone = generateStandaloneHtml(doc.filename, html)
       fileBytes = new TextEncoder().encode(standalone)
       break
@@ -1036,7 +1081,7 @@ export async function exportActiveDocument(
       outFilename = `${baseTitle}.docx`
       filterName = 'Documento Word (*.docx)'
       filterExt = 'docx'
-      mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      cleanMime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
       fileBytes = generateDocxUint8Array(doc.filename, doc.content)
       break
     }
@@ -1044,7 +1089,7 @@ export async function exportActiveDocument(
       outFilename = `${baseTitle}.doc`
       filterName = 'Documento Word 97-2003 (*.doc)'
       filterExt = 'doc'
-      mimeType = 'application/msword;charset=utf-8'
+      cleanMime = 'application/msword'
       const docHtml = generateDocHtml(doc.filename, html)
       const encoded = new TextEncoder().encode(docHtml)
       const withBom = new Uint8Array(encoded.length + 3)
@@ -1057,7 +1102,7 @@ export async function exportActiveDocument(
       outFilename = `${baseTitle}.rtf`
       filterName = 'Rich Text Format (*.rtf)'
       filterExt = 'rtf'
-      mimeType = 'application/rtf;charset=utf-8'
+      cleanMime = 'application/rtf'
       const rtfStr = generateRtfString(doc.filename, doc.content)
       fileBytes = new TextEncoder().encode(rtfStr)
       break
@@ -1091,7 +1136,7 @@ export async function exportActiveDocument(
         types: [
           {
             description: filterName,
-            accept: { [mimeType]: [`.${filterExt}`] }
+            accept: { [cleanMime]: [`.${filterExt}`] }
           }
         ]
       })
@@ -1102,11 +1147,13 @@ export async function exportActiveDocument(
       return
     } catch (err: any) {
       if (err.name === 'AbortError') return
+      console.warn('showSaveFilePicker falhou, usando download fallback:', err)
     }
   }
 
   // Fallback Web: download direto de Blob
-  const blob = new Blob([fileBytes as any], { type: mimeType })
+  const blobType = cleanMime.startsWith('text/') ? `${cleanMime};charset=utf-8` : cleanMime
+  const blob = new Blob([fileBytes as any], { type: blobType })
   triggerBlobDownload(blob, outFilename)
   showToast(`Baixado: ${outFilename}`)
 }

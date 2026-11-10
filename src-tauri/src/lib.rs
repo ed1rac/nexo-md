@@ -201,14 +201,24 @@ fn save_document_as_dialog(
     if let Some(picked_path) =
         dialog::pick_save_file("Salvar Como — NexoMD", &def_name, "md", &filters)
     {
-        if let Some(name) = picked_path.file_name().and_then(|n| n.to_str()) {
+        let final_path = if picked_path.extension().is_none() {
+            picked_path.with_extension("md")
+        } else {
+            picked_path
+        };
+
+        if let Some(parent) = final_path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+
+        if let Some(name) = final_path.file_name().and_then(|n| n.to_str()) {
             doc.filename = name.to_string();
         }
-        doc.path = Some(picked_path.clone());
+        doc.path = Some(final_path.clone());
 
         let doc_content = doc.rope.to_string();
         let new_sha = write_file_atomic(
-            &picked_path,
+            &final_path,
             &doc_content,
             &doc.line_ending,
             doc.has_bom,
@@ -242,14 +252,24 @@ fn export_file_native(
         &filter_ext,
         &filters,
     ) {
-        std::fs::write(&picked_path, &content_bytes).map_err(|e| {
+        let final_path = if picked_path.extension().is_none() && !filter_ext.is_empty() {
+            picked_path.with_extension(&filter_ext)
+        } else {
+            picked_path
+        };
+
+        if let Some(parent) = final_path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+
+        std::fs::write(&final_path, &content_bytes).map_err(|e| {
             format!(
                 "Falha ao gravar arquivo exportado em {:?}: {}",
-                picked_path, e
+                final_path, e
             )
         })?;
 
-        Ok(Some(picked_path.to_string_lossy().to_string()))
+        Ok(Some(final_path.to_string_lossy().to_string()))
     } else {
         Ok(None)
     }
@@ -465,5 +485,40 @@ mod tests {
 
         let good_md = validate_link_target("./docs/arquitetura.md");
         assert!(good_md.allowed);
+    }
+
+    #[test]
+    fn test_document_manager_and_atomic_save() {
+        let mgr = DocumentManager::default();
+        let created = mgr
+            .create_memory_doc("Documento-Teste.md", "# Conteudo Inicial\nTexto.")
+            .expect("Falha ao criar documento em memoria");
+        assert_eq!(created.filename, "Documento-Teste.md");
+        assert!(created.path.is_none());
+
+        let tmp_file = std::env::temp_dir().join(format!("nexomd_test_save_{}.md", uuid::Uuid::new_v4()));
+        let sha = write_file_atomic(&tmp_file, &created.content, "LF", false)
+            .expect("Falha ao gravar arquivo atomicamente");
+        assert!(!sha.is_empty());
+
+        // Reabre do disco e valida
+        let opened = mgr
+            .open_from_disk(&tmp_file.to_string_lossy())
+            .expect("Falha ao abrir do disco");
+        assert_eq!(opened.content, created.content);
+        assert_eq!(opened.sha256, sha);
+
+        // Atualizacao e sobrescrita atomica com arquivo existente
+        let updated_content = "# Conteudo Atualizado\nMais texto.";
+        let sha2 = write_file_atomic(&tmp_file, updated_content, "LF", false)
+            .expect("Falha ao sobrescrever arquivo existente atomicamente");
+        assert_ne!(sha, sha2);
+
+        let re_opened = mgr
+            .open_from_disk(&tmp_file.to_string_lossy())
+            .expect("Falha ao reabrir do disco");
+        assert_eq!(re_opened.content, updated_content);
+
+        let _ = std::fs::remove_file(&tmp_file);
     }
 }

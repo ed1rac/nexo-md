@@ -36,6 +36,8 @@ import {
   handleSafeLinkClick,
   exportPreferencesJson,
   showToast,
+  setWysiwygSyncGetter,
+  syncWysiwygContentIfActive,
   type EditorMode,
   type ThemeId
 } from './stores/editorStore'
@@ -43,6 +45,7 @@ import { htmlToMarkdown, type LineEndingType } from './engine/exporters'
 
 const { t, locale, availableLocales } = useI18n()
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
+const previewPaneRef = ref<HTMLElement | null>(null)
 const gutterRef = ref<HTMLElement | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const findInputRef = ref<HTMLInputElement | null>(null)
@@ -179,6 +182,23 @@ function onTextareaInput(e: Event) {
   updateCursorLine()
 }
 
+let previewInputTimer: ReturnType<typeof setTimeout> | null = null
+function onPreviewInput() {
+  if (editorStore.mode !== 'wysiwyg') return
+  if (activeDocument.value) {
+    activeDocument.value.isDirty = true
+  }
+  if (previewInputTimer) clearTimeout(previewInputTimer)
+  previewInputTimer = setTimeout(() => {
+    const el = previewPaneRef.value
+    if (!el || !activeDocument.value) return
+    const md = htmlToMarkdown(el.innerHTML)
+    if (md !== activeDocument.value.content) {
+      void updateActiveDocumentContent(md)
+    }
+  }, 350)
+}
+
 function onPreviewBlur(e: FocusEvent) {
   if (editorStore.mode !== 'wysiwyg') return
   const el = e.target as HTMLElement
@@ -198,6 +218,9 @@ function onPreviewClick(e: MouseEvent) {
 
 function setMode(m: EditorMode) {
   closeMenus()
+  if (editorStore.mode === 'wysiwyg' && m !== 'wysiwyg') {
+    syncWysiwygContentIfActive()
+  }
   editorStore.mode = m
 }
 
@@ -476,6 +499,12 @@ function handleKeydown(e: KeyboardEvent) {
 }
 
 onMounted(() => {
+  setWysiwygSyncGetter(() => {
+    if (editorStore.mode === 'wysiwyg' && previewPaneRef.value) {
+      return previewPaneRef.value.innerHTML
+    }
+    return null
+  })
   if (editorStore.tabs.length === 0) {
     void createNewDocument('Boas-Vindas.md', DEFAULT_WELCOME_MD)
   }
@@ -1302,9 +1331,11 @@ onBeforeUnmount(() => {
             editorStore.mode === 'split' ||
             editorStore.mode === 'readonly'
           "
+          ref="previewPaneRef"
           class="preview-pane"
           :contenteditable="editorStore.mode === 'wysiwyg'"
           @click="onPreviewClick"
+          @input="onPreviewInput"
           @blur="onPreviewBlur"
           v-html="renderedHtml || '<p style=&quot;color:var(--text-muted)&quot;>Documento em branco — comece a digitar...</p>'"
         ></section>
