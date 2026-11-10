@@ -18,6 +18,7 @@
     "importHtml": "Importar HTML como Markdown...",
     "openFolder": "Abrir Pasta (Metadados O(1))...",
     "save": "Salvar (Ctrl+S)",
+    "saveAs": "Salvar Como... (Ctrl+Shift+S)",
     "saveAsMd": "Baixar / Exportar Markdown (.md)",
     "exportPdf": "Exportar para PDF (Impressão A4)...",
     "exportHtml": "Exportar para HTML (.html)",

@@ -22,12 +22,18 @@ import { BlockIndex, fastHash } from '../engine/blockIndex'
 import {
   type LineEndingType,
   detectLineEnding,
+  normalizeLineEndings,
   exportAsMarkdown,
   exportAsHtml,
   exportAsPdf,
   exportAsDoc,
   exportAsDocx,
   exportAsRtf,
+  generateStandaloneHtml,
+  generateDocHtml,
+  generateRtfString,
+  generateDocxUint8Array,
+  triggerBlobDownload,
   htmlToMarkdown
 } from '../engine/exporters'
 
@@ -72,6 +78,7 @@ export interface DocumentTab {
   toc: TocItem[]
   undoStack: string[]
   redoStack: string[]
+  fileHandle?: any
 }
 
 export interface WorkspaceEntry {
@@ -659,7 +666,7 @@ export async function updateActiveDocumentContent(newContent: string): Promise<v
   if (editorStore.preferences.autoSave && doc.isDirty) {
     if (autoSaveTimer) clearTimeout(autoSaveTimer)
     autoSaveTimer = setTimeout(() => {
-      void saveActiveDocument()
+      void saveActiveDocument(true)
     }, editorStore.preferences.autoSaveDelay)
   }
 }
@@ -721,19 +728,49 @@ export async function redoActiveDocument(): Promise<void> {
 }
 
 /**
- * Salva atomicamente o documento.
+ * Salva atomicamente o documento no disco ou armazenamento local.
+ * Se isAutoSave for true e o arquivo não possuir caminho salvo, grava no cache local para não interromper a digitação.
+ * Se isAutoSave for false (clique do usuário / Ctrl+S) e não possuir caminho, abre o diálogo "Salvar Como".
  */
-export async function saveActiveDocument(): Promise<void> {
+export async function saveActiveDocument(isAutoSave = false): Promise<void> {
   const doc = activeDocument.value
   if (!doc) return
 
-  if (isTauriRuntime() && doc.path) {
+  if (!doc.path) {
+    if (isAutoSave) {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(`nexomd.saved.${doc.filename}`, doc.content)
+      }
+      return
+    }
+    await saveActiveDocumentAs()
+    return
+  }
+
+  if (isTauriRuntime()) {
     try {
       const view = await invokeTauri<any>('save_document_atomic', {
         docId: doc.id,
-        targetPath: doc.path
+        targetPath: doc.path,
+        content: doc.content
       })
       Object.assign(doc, view)
+      doc.isDirty = false
+      showToast(`Salvo: ${doc.filename}`)
+      return
+    } catch (err) {
+      showToast(`Erro ao salvar: ${String(err)}`)
+      return
+    }
+  }
+
+  if (doc.fileHandle) {
+    try {
+      const writable = await doc.fileHandle.createWritable()
+      await writable.write(doc.content)
+      await writable.close()
+      doc.sha256 = fastHash(doc.content)
+      doc.isDirty = false
       showToast(`Salvo: ${doc.filename}`)
       return
     } catch {
@@ -747,6 +784,144 @@ export async function saveActiveDocument(): Promise<void> {
   doc.sha256 = fastHash(doc.content)
   doc.isDirty = false
   showToast(`Salvo: ${doc.filename}`)
+}
+
+/**
+ * Diálogo Salvar Como (Save As) nativo no Tauri ou File System Access API / Download no Navegador.
+ */
+export async function saveActiveDocumentAs(): Promise<void> {
+  const doc = activeDocument.value
+  if (!doc) return
+
+  if (isTauriRuntime()) {
+    try {
+      const view = await invokeTauri<any>('save_document_as_dialog', {
+        docId: doc.id,
+        defaultFilename: doc.filename,
+        content: doc.content
+      })
+      if (view) {
+        Object.assign(doc, view)
+        doc.isDirty = false
+        showToast(`Salvo com sucesso: ${doc.filename}`)
+      }
+      return
+    } catch (err) {
+      showToast(`Erro ao salvar: ${String(err)}`)
+      return
+    }
+  }
+
+  // Navegador: File System Access API
+  if (typeof window !== 'undefined' && 'showSaveFilePicker' in window) {
+    try {
+      const handle = await (window as any).showSaveFilePicker({
+        suggestedName: doc.filename.endsWith('.md') ? doc.filename : `${doc.filename}.md`,
+        types: [
+          {
+            description: 'Documento Markdown (*.md)',
+            accept: { 'text/markdown': ['.md', '.markdown', '.txt'] }
+          }
+        ]
+      })
+      const writable = await handle.createWritable()
+      await writable.write(doc.content)
+      await writable.close()
+      doc.fileHandle = handle
+      doc.filename = handle.name
+      doc.sha256 = fastHash(doc.content)
+      doc.isDirty = false
+      showToast(`Salvo: ${doc.filename}`)
+      return
+    } catch (err: any) {
+      if (err.name === 'AbortError') return
+    }
+  }
+
+  // Fallback download direto
+  exportAsMarkdown(doc.filename, doc.content, doc.lineEnding)
+  doc.sha256 = fastHash(doc.content)
+  doc.isDirty = false
+  showToast(`Baixado: ${doc.filename}`)
+}
+
+/**
+ * Abre diálogo nativo de seleção de arquivo (Tauri) ou File System Access API (Web).
+ */
+export async function openDocumentWithDialog(): Promise<DocumentTab | null> {
+  if (isTauriRuntime()) {
+    try {
+      const view = await invokeTauri<any>('pick_and_open_document')
+      if (!view) return null
+
+      const isHtml = /\.(html|htm)$/i.test(view.filename)
+      if (isHtml) {
+        const converted = htmlToMarkdown(view.content)
+        const mdName = view.filename.replace(/\.(html|htm)$/i, '.md')
+        await invokeTauri('rename_document', { docId: view.id, filename: mdName })
+        const updatedView = await invokeTauri<any>('update_document_text', {
+          docId: view.id,
+          content: converted
+        })
+        Object.assign(view, updatedView)
+      }
+
+      blockIndex.syncFromMarkdown(view.content)
+      editorStore.indexStats = blockIndex.getStats()
+      const tab: DocumentTab = {
+        ...view,
+        lineEnding: (view.lineEnding as LineEndingType) || 'LF',
+        undoStack: [],
+        redoStack: []
+      }
+      editorStore.tabs.push(tab)
+      editorStore.activeTabId = tab.id
+      recomputeFindMatches()
+      showToast(`Arquivo aberto: ${tab.filename} (${tab.lineEnding})`)
+      return tab
+    } catch (err) {
+      showToast(`Erro ao abrir arquivo: ${String(err)}`)
+      return null
+    }
+  }
+
+  // Web: File System Access API
+  if (typeof window !== 'undefined' && 'showOpenFilePicker' in window) {
+    try {
+      const [handle] = await (window as any).showOpenFilePicker({
+        types: [
+          {
+            description: 'Documentos suportados (*.md, *.txt, *.html)',
+            accept: {
+              'text/markdown': ['.md', '.markdown'],
+              'text/plain': ['.txt'],
+              'text/html': ['.html', '.htm']
+            }
+          }
+        ],
+        multiple: false
+      })
+      if (!handle) return null
+      const file = await handle.getFile()
+      const rawText = await file.text()
+      const detectedLe = detectLineEnding(rawText)
+      const isHtml = /\.(html|htm)$/i.test(file.name)
+      let finalContent = rawText.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+      let finalName = file.name
+      if (isHtml) {
+        finalContent = htmlToMarkdown(rawText)
+        finalName = file.name.replace(/\.(html|htm)$/i, '.md')
+      }
+      const tab = await createNewDocument(finalName, finalContent, detectedLe)
+      tab.fileHandle = handle
+      showToast(`Arquivo aberto: ${finalName} (${detectedLe})`)
+      return tab
+    } catch (err: any) {
+      if (err.name === 'AbortError') return null
+    }
+  }
+
+  return null
 }
 
 /**
@@ -815,38 +990,125 @@ export async function importFileObject(file: File): Promise<void> {
 }
 
 /**
- * Funções de Exportação do Documento Ativo.
+ * Funções de Exportação do Documento Ativo (suporta Desktop nativo via Tauri e Web).
  */
-export function exportActiveDocument(format: 'md' | 'html' | 'pdf' | 'docx' | 'doc' | 'rtf'): void {
+export async function exportActiveDocument(
+  format: 'md' | 'html' | 'pdf' | 'docx' | 'doc' | 'rtf'
+): Promise<void> {
   const doc = activeDocument.value
   if (!doc) return
   const html = renderMarkdownToHtml(doc.content)
 
-  switch (format) {
-    case 'md':
-      exportAsMarkdown(doc.filename, doc.content, doc.lineEnding)
-      showToast(`Exportado: ${doc.filename}`)
-      break
-    case 'html':
-      exportAsHtml(doc.filename, html)
-      showToast('Exportado para HTML (.html)')
-      break
-    case 'pdf':
-      exportAsPdf(doc.filename, html)
-      break
-    case 'docx':
-      exportAsDocx(doc.filename, doc.content)
-      showToast('Exportado para Word (.docx)')
-      break
-    case 'doc':
-      exportAsDoc(doc.filename, html)
-      showToast('Exportado para Word (.doc)')
-      break
-    case 'rtf':
-      exportAsRtf(doc.filename, doc.content)
-      showToast('Exportado para Rich Text (.rtf)')
-      break
+  if (format === 'pdf') {
+    exportAsPdf(doc.filename, html)
+    showToast('Diálogo de impressão PDF acionado!')
+    return
   }
+
+  const baseTitle =
+    doc.filename.replace(/\.(md|markdown|txt|html|htm|docx|doc|rtf|pdf)$/i, '') || 'documento'
+  let outFilename = ''
+  let filterName = ''
+  let filterExt = ''
+  let mimeType = ''
+  let fileBytes: Uint8Array
+
+  switch (format) {
+    case 'md': {
+      outFilename = `${baseTitle}.md`
+      filterName = 'Documento Markdown (*.md)'
+      filterExt = 'md'
+      mimeType = 'text/markdown;charset=utf-8'
+      const normalized = normalizeLineEndings(doc.content, doc.lineEnding)
+      fileBytes = new TextEncoder().encode(normalized)
+      break
+    }
+    case 'html': {
+      outFilename = `${baseTitle}.html`
+      filterName = 'Página Web (*.html)'
+      filterExt = 'html'
+      mimeType = 'text/html;charset=utf-8'
+      const standalone = generateStandaloneHtml(doc.filename, html)
+      fileBytes = new TextEncoder().encode(standalone)
+      break
+    }
+    case 'docx': {
+      outFilename = `${baseTitle}.docx`
+      filterName = 'Documento Word (*.docx)'
+      filterExt = 'docx'
+      mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      fileBytes = generateDocxUint8Array(doc.filename, doc.content)
+      break
+    }
+    case 'doc': {
+      outFilename = `${baseTitle}.doc`
+      filterName = 'Documento Word 97-2003 (*.doc)'
+      filterExt = 'doc'
+      mimeType = 'application/msword;charset=utf-8'
+      const docHtml = generateDocHtml(doc.filename, html)
+      const encoded = new TextEncoder().encode(docHtml)
+      const withBom = new Uint8Array(encoded.length + 3)
+      withBom.set([0xef, 0xbb, 0xbf], 0)
+      withBom.set(encoded, 3)
+      fileBytes = withBom
+      break
+    }
+    case 'rtf': {
+      outFilename = `${baseTitle}.rtf`
+      filterName = 'Rich Text Format (*.rtf)'
+      filterExt = 'rtf'
+      mimeType = 'application/rtf;charset=utf-8'
+      const rtfStr = generateRtfString(doc.filename, doc.content)
+      fileBytes = new TextEncoder().encode(rtfStr)
+      break
+    }
+  }
+
+  // Em ambiente Tauri Desktop: usa diálogo nativo de salvamento e escrita em disco!
+  if (isTauriRuntime()) {
+    try {
+      const savedPath = await invokeTauri<string | null>('export_file_native', {
+        defaultFilename: outFilename,
+        filterName,
+        filterExt,
+        contentBytes: Array.from(fileBytes)
+      })
+      if (savedPath) {
+        showToast(`Exportado: ${savedPath}`)
+      }
+      return
+    } catch (err) {
+      showToast(`Erro na exportação: ${String(err)}`)
+      // segue para fallback
+    }
+  }
+
+  // Em ambiente Navegador (Web): usa File System Access API showSaveFilePicker
+  if (typeof window !== 'undefined' && 'showSaveFilePicker' in window) {
+    try {
+      const handle = await (window as any).showSaveFilePicker({
+        suggestedName: outFilename,
+        types: [
+          {
+            description: filterName,
+            accept: { [mimeType]: [`.${filterExt}`] }
+          }
+        ]
+      })
+      const writable = await handle.createWritable()
+      await writable.write(fileBytes)
+      await writable.close()
+      showToast(`Exportado: ${handle.name}`)
+      return
+    } catch (err: any) {
+      if (err.name === 'AbortError') return
+    }
+  }
+
+  // Fallback Web: download direto de Blob
+  const blob = new Blob([fileBytes as any], { type: mimeType })
+  triggerBlobDownload(blob, outFilename)
+  showToast(`Baixado: ${outFilename}`)
 }
 
 /**

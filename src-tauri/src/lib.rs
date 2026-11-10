@@ -1,6 +1,7 @@
 //! Núcleo Backend Tauri v2 do NexoMD.
 //! Expõe comandos IPC tipados e assíncronos para o Frontend Vue 3 + TypeScript.
 
+pub mod dialog;
 pub mod document;
 pub mod recovery;
 pub mod security;
@@ -30,6 +31,26 @@ fn create_document(
 #[tauri::command]
 fn open_document(state: State<'_, AppState>, path: String) -> Result<DocumentView, String> {
     state.doc_manager.open_from_disk(&path)
+}
+
+#[tauri::command]
+fn pick_and_open_document(state: State<'_, AppState>) -> Result<Option<DocumentView>, String> {
+    let filters = [
+        (
+            "Documentos Markdown (*.md, *.markdown, *.txt)",
+            "*.md;*.markdown;*.mdown;*.mkdn;*.txt",
+        ),
+        ("Páginas Web (*.html, *.htm)", "*.html;*.htm"),
+        ("Todos os Arquivos (*.*)", "*.*"),
+    ];
+
+    if let Some(path) = dialog::pick_open_file("Abrir Arquivo — NexoMD", &filters) {
+        let path_str = path.to_string_lossy().to_string();
+        let view = state.doc_manager.open_from_disk(&path_str)?;
+        Ok(Some(view))
+    } else {
+        Ok(None)
+    }
 }
 
 #[tauri::command]
@@ -103,6 +124,7 @@ fn save_document_atomic(
     state: State<'_, AppState>,
     doc_id: String,
     target_path: Option<String>,
+    content: Option<String>,
 ) -> Result<DocumentView, String> {
     let mut docs = state
         .doc_manager
@@ -113,6 +135,10 @@ fn save_document_atomic(
     let doc = docs
         .get_mut(&doc_id)
         .ok_or_else(|| format!("Documento '{}' não encontrado.", doc_id))?;
+
+    if let Some(c) = content {
+        doc.update_text(&c);
+    }
 
     if let Some(new_path_str) = target_path {
         let new_path = PathBuf::from(&new_path_str);
@@ -127,8 +153,8 @@ fn save_document_atomic(
         .as_ref()
         .ok_or_else(|| "Caminho de destino não especificado para salvar o documento.".to_string())?;
 
-    let content = doc.rope.to_string();
-    let new_sha = write_file_atomic(path, &content, &doc.line_ending, doc.has_bom)?;
+    let doc_content = doc.rope.to_string();
+    let new_sha = write_file_atomic(path, &doc_content, &doc.line_ending, doc.has_bom)?;
     doc.saved_sha256 = new_sha;
     doc.saved_line_ending = doc.line_ending.clone();
 
@@ -136,6 +162,97 @@ fn save_document_atomic(
     let _ = state.recovery_journal.remove_snapshot(&doc.id);
 
     Ok(doc.to_view())
+}
+
+#[tauri::command]
+fn save_document_as_dialog(
+    state: State<'_, AppState>,
+    doc_id: String,
+    default_filename: Option<String>,
+    content: Option<String>,
+) -> Result<Option<DocumentView>, String> {
+    let mut docs = state
+        .doc_manager
+        .docs
+        .lock()
+        .map_err(|_| "Falha ao adquirir lock de documentos".to_string())?;
+
+    let doc = docs
+        .get_mut(&doc_id)
+        .ok_or_else(|| format!("Documento '{}' não encontrado.", doc_id))?;
+
+    if let Some(c) = content {
+        doc.update_text(&c);
+    }
+
+    let def_name = default_filename.unwrap_or_else(|| doc.filename.clone());
+    let def_name = if !def_name.to_lowercase().ends_with(".md") && !def_name.contains('.') {
+        format!("{}.md", def_name)
+    } else {
+        def_name
+    };
+
+    let filters = [
+        ("Documento Markdown (*.md)", "*.md"),
+        ("Arquivo de Texto (*.txt)", "*.txt"),
+        ("Todos os Arquivos (*.*)", "*.*"),
+    ];
+
+    if let Some(picked_path) =
+        dialog::pick_save_file("Salvar Como — NexoMD", &def_name, "md", &filters)
+    {
+        if let Some(name) = picked_path.file_name().and_then(|n| n.to_str()) {
+            doc.filename = name.to_string();
+        }
+        doc.path = Some(picked_path.clone());
+
+        let doc_content = doc.rope.to_string();
+        let new_sha = write_file_atomic(
+            &picked_path,
+            &doc_content,
+            &doc.line_ending,
+            doc.has_bom,
+        )?;
+        doc.saved_sha256 = new_sha;
+        doc.saved_line_ending = doc.line_ending.clone();
+
+        let _ = state.recovery_journal.remove_snapshot(&doc.id);
+        Ok(Some(doc.to_view()))
+    } else {
+        Ok(None)
+    }
+}
+
+#[tauri::command]
+fn export_file_native(
+    default_filename: String,
+    filter_name: String,
+    filter_ext: String,
+    content_bytes: Vec<u8>,
+) -> Result<Option<String>, String> {
+    let filter_pattern = format!("*.{}", filter_ext);
+    let filters = [
+        (filter_name.as_str(), filter_pattern.as_str()),
+        ("Todos os Arquivos (*.*)", "*.*"),
+    ];
+
+    if let Some(picked_path) = dialog::pick_save_file(
+        "Exportar Arquivo — NexoMD",
+        &default_filename,
+        &filter_ext,
+        &filters,
+    ) {
+        std::fs::write(&picked_path, &content_bytes).map_err(|e| {
+            format!(
+                "Falha ao gravar arquivo exportado em {:?}: {}",
+                picked_path, e
+            )
+        })?;
+
+        Ok(Some(picked_path.to_string_lossy().to_string()))
+    } else {
+        Ok(None)
+    }
 }
 
 #[tauri::command]
@@ -236,10 +353,13 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             create_document,
             open_document,
+            pick_and_open_document,
             update_document_text,
             undo_document,
             redo_document,
             save_document_atomic,
+            save_document_as_dialog,
+            export_file_native,
             set_document_line_ending,
             rename_document,
             close_document,

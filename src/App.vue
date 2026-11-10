@@ -14,6 +14,8 @@ import {
   undoActiveDocument,
   redoActiveDocument,
   saveActiveDocument,
+  saveActiveDocumentAs,
+  openDocumentWithDialog,
   importFileObject,
   exportActiveDocument,
   copyAsMarkdown,
@@ -104,6 +106,18 @@ async function handleNewDocument() {
   }
   await nextTick()
   textareaRef.value?.focus()
+}
+
+async function handleOpenDocument() {
+  closeMenus()
+  const tab = await openDocumentWithDialog()
+  if (tab) {
+    await nextTick()
+    textareaRef.value?.focus()
+    return
+  }
+  // Se não foi selecionado via diálogo nativo ou picker, aciona input se for o caso
+  triggerFileImport()
 }
 
 function triggerFileImport() {
@@ -307,8 +321,9 @@ function runFormat(action: string) {
 // Lista de Comandos para a Command Palette (Ctrl+Shift+P)
 const paletteCommands = computed(() => [
   { id: 'new', label: t('menu.newTab'), run: () => handleNewDocument() },
-  { id: 'open', label: t('menu.openFile'), run: () => triggerFileImport() },
-  { id: 'save', label: t('menu.save'), run: () => saveActiveDocument() },
+  { id: 'open', label: t('menu.openFile'), run: () => handleOpenDocument() },
+  { id: 'save', label: t('menu.save'), run: () => saveActiveDocument(false) },
+  { id: 'saveAs', label: t('menu.saveAs'), run: () => saveActiveDocumentAs() },
   { id: 'find', label: t('menu.find'), run: () => openFindReplacePanel(false) },
   { id: 'replace', label: t('menu.replace'), run: () => openFindReplacePanel(true) },
   { id: 'pdf', label: t('menu.exportPdf'), run: () => exportActiveDocument('pdf') },
@@ -393,13 +408,13 @@ function handleKeydown(e: KeyboardEvent) {
     void handleNewDocument()
   } else if (key === 'o' && !e.shiftKey) {
     e.preventDefault()
-    triggerFileImport()
+    void handleOpenDocument()
   } else if (key === 's' && !e.shiftKey) {
     e.preventDefault()
-    void saveActiveDocument()
+    void saveActiveDocument(false)
   } else if (key === 's' && e.shiftKey) {
     e.preventDefault()
-    exportActiveDocument('md')
+    void saveActiveDocumentAs()
   } else if (key === 'w' && !e.shiftKey) {
     e.preventDefault()
     void closeDocumentTab()
@@ -508,11 +523,14 @@ onBeforeUnmount(() => {
           <button class="menu-trigger" @click="toggleMenu('file')">{{ t('menu.file') }} ▾</button>
           <div v-if="activeMenu === 'file'" class="menu-dropdown">
             <button class="menu-item" @click="handleNewDocument()">➕ {{ t('menu.newTab') }}</button>
-            <button class="menu-item" @click="triggerFileImport()">📂 {{ t('menu.openFile') }}</button>
+            <button class="menu-item" @click="handleOpenDocument()">📂 {{ t('menu.openFile') }}</button>
             <button class="menu-item" @click="triggerFileImport()">🌐 {{ t('menu.importHtml') }}</button>
             <div class="menu-divider"></div>
-            <button class="menu-item" @click="saveActiveDocument(); closeMenus()">
+            <button class="menu-item" @click="saveActiveDocument(false); closeMenus()">
               💾 {{ t('menu.save') }}
+            </button>
+            <button class="menu-item" @click="saveActiveDocumentAs(); closeMenus()">
+              💾 {{ t('menu.saveAs') }}
             </button>
             <button class="menu-item" @click="exportActiveDocument('md'); closeMenus()">
               ⬇ {{ t('menu.saveAsMd') }}

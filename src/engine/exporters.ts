@@ -141,11 +141,11 @@ const STANDALONE_DOC_STYLES = `
 `
 
 /**
- * Exporta como documento HTML5 completo e autônomo (.html).
+ * Gera documento HTML5 completo e autônomo (.html).
  */
-export function exportAsHtml(filename: string, renderedHtml: string): void {
+export function generateStandaloneHtml(filename: string, renderedHtml: string): string {
   const title = stripExtension(filename)
-  const fullHtml = `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -157,16 +157,24 @@ export function exportAsHtml(filename: string, renderedHtml: string): void {
 ${renderedHtml}
 </body>
 </html>`
+}
+
+/**
+ * Exporta como documento HTML5 completo e autônomo (.html).
+ */
+export function exportAsHtml(filename: string, renderedHtml: string): void {
+  const title = stripExtension(filename)
+  const fullHtml = generateStandaloneHtml(filename, renderedHtml)
   const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' })
   triggerBlobDownload(blob, `${title}.html`)
 }
 
 /**
- * Exporta para PDF abrindo janela/iframe de impressão dedicada com folha de estilo @page limpa.
+ * Gera HTML otimizado para impressão PDF sem cabeçalhos e rodapés do navegador.
  */
-export function exportAsPdf(filename: string, renderedHtml: string): void {
+export function generatePdfPrintHtml(filename: string, renderedHtml: string): string {
   const title = stripExtension(filename)
-  const printHtml = `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -174,30 +182,76 @@ export function exportAsPdf(filename: string, renderedHtml: string): void {
   <style>
     ${STANDALONE_DOC_STYLES}
     @page {
-      size: A4;
-      margin: 18mm 16mm;
+      size: A4 portrait;
+      margin: 0;
+      @top-left { content: none !important; }
+      @top-center { content: none !important; }
+      @top-right { content: none !important; }
+      @bottom-left { content: none !important; }
+      @bottom-center { content: none !important; }
+      @bottom-right { content: none !important; }
+    }
+    @page :left {
+      margin: 0;
+      @top-left { content: none !important; }
+      @top-center { content: none !important; }
+      @top-right { content: none !important; }
+      @bottom-left { content: none !important; }
+      @bottom-center { content: none !important; }
+      @bottom-right { content: none !important; }
+    }
+    @page :right {
+      margin: 0;
+      @top-left { content: none !important; }
+      @top-center { content: none !important; }
+      @top-right { content: none !important; }
+      @bottom-left { content: none !important; }
+      @bottom-center { content: none !important; }
+      @bottom-right { content: none !important; }
     }
     @media print {
-      body {
-        margin: 0;
-        padding: 0;
-        max-width: none;
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        color: #1f2328 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
       }
-      pre, blockquote, table, tr, img {
-        page-break-inside: avoid;
+      .print-page-wrapper {
+        padding: 16mm 18mm !important;
+        box-sizing: border-box !important;
+        max-width: 820px !important;
+        margin: 0 auto !important;
       }
-      h1, h2, h3, h4 {
-        page-break-after: avoid;
+      pre, blockquote, table, tr, img, .katex-block {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      h1, h2, h3, h4, h5, h6 {
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+      }
+      header, footer, nav {
+        display: none !important;
       }
     }
   </style>
 </head>
 <body>
-${renderedHtml}
+  <div class="print-page-wrapper">
+    ${renderedHtml}
+  </div>
 </body>
 </html>`
+}
 
-  // Cria um iframe invisível para acionar a impressão/PDF nativa em qualquer ambiente (Tauri ou Browser)
+/**
+ * Exporta para PDF abrindo janela/iframe de impressão com folha de estilo @page limpa (sem cabeçalho/rodapé do browser).
+ */
+export function exportAsPdf(filename: string, renderedHtml: string): void {
+  const printHtml = generatePdfPrintHtml(filename, renderedHtml)
+
   const iframe = document.createElement('iframe')
   iframe.style.position = 'fixed'
   iframe.style.right = '0'
@@ -205,6 +259,7 @@ ${renderedHtml}
   iframe.style.width = '0'
   iframe.style.height = '0'
   iframe.style.border = '0'
+  iframe.style.visibility = 'hidden'
   document.body.appendChild(iframe)
 
   const doc = iframe.contentWindow?.document
@@ -213,23 +268,29 @@ ${renderedHtml}
     doc.write(printHtml)
     doc.close()
     setTimeout(() => {
-      iframe.contentWindow?.focus()
-      iframe.contentWindow?.print()
-      setTimeout(() => {
-        if (iframe.parentNode) iframe.parentNode.removeChild(iframe)
-      }, 2000)
-    }, 250)
+      try {
+        iframe.contentWindow?.focus()
+        iframe.contentWindow?.print()
+      } catch (err) {
+        console.error('Falha ao acionar impressão via iframe:', err)
+        window.print()
+      } finally {
+        setTimeout(() => {
+          if (iframe.parentNode) iframe.parentNode.removeChild(iframe)
+        }, 3000)
+      }
+    }, 350)
   } else {
     window.print()
   }
 }
 
 /**
- * Exporta para formato Word (.doc) compatível com Microsoft Word, LibreOffice e Google Docs.
+ * Gera documento Word (.doc) em formato HTML compatível.
  */
-export function exportAsDoc(filename: string, renderedHtml: string): void {
+export function generateDocHtml(filename: string, renderedHtml: string): string {
   const title = stripExtension(filename)
-  const wordHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office"
+  return `<html xmlns:o="urn:schemas-microsoft-com:office:office"
 xmlns:w="urn:schemas-microsoft-com:office:word"
 xmlns="http://www.w3.org/TR/REC-html40">
 <head>
@@ -250,6 +311,14 @@ xmlns="http://www.w3.org/TR/REC-html40">
 ${renderedHtml}
 </body>
 </html>`
+}
+
+/**
+ * Exporta para formato Word (.doc) compatível com Microsoft Word, LibreOffice e Google Docs.
+ */
+export function exportAsDoc(filename: string, renderedHtml: string): void {
+  const title = stripExtension(filename)
+  const wordHtml = generateDocHtml(filename, renderedHtml)
   const blob = new Blob(['\ufeff', wordHtml], {
     type: 'application/msword;charset=utf-8'
   })
@@ -257,10 +326,9 @@ ${renderedHtml}
 }
 
 /**
- * Exporta para Rich Text Format (.rtf) nativo com suporte a Unicode (\uN?), títulos, negrito, itálico, sublinhado, listas e código.
+ * Gera documento em Rich Text Format (.rtf) com suporte a Unicode (\uN?), títulos, negrito, itálico, sublinhado, listas e código.
  */
-export function exportAsRtf(filename: string, markdown: string): void {
-  const title = stripExtension(filename)
+export function generateRtfString(filename: string, markdown: string): string {
   const lines = markdown.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')
 
   const encodeRtfText = (text: string): string => {
@@ -402,7 +470,7 @@ export function exportAsRtf(filename: string, markdown: string): void {
     }
   }
 
-  const rtf = [
+  return [
     '{\\rtf1\\ansi\\ansicpg1252\\deff0\\nouicompat',
     '{\\fonttbl{\\f0\\fnil\\fcharset0 Segoe UI;}{\\f1\\fmodern\\fcharset0 Consolas;}}',
     '{\\colortbl ;\\red37\\green99\\blue235;\\red254\\green240\\blue138;}',
@@ -410,7 +478,11 @@ export function exportAsRtf(filename: string, markdown: string): void {
     ...bodyParts,
     '}'
   ].join('\r\n')
+}
 
+export function exportAsRtf(filename: string, markdown: string): void {
+  const title = stripExtension(filename)
+  const rtf = generateRtfString(filename, markdown)
   const blob = new Blob([rtf], { type: 'application/rtf;charset=utf-8' })
   triggerBlobDownload(blob, `${title}.rtf`)
 }
@@ -476,9 +548,9 @@ function markdownInlineToWordRuns(line: string, extraRPr = '<w:sz w:val="22"/>')
 }
 
 /**
- * Construtor leve de pacote ZIP (método STORE sem compressão + CRC32 IEEE) para geração nativa de arquivos .docx OpenXML.
+ * Construtor leve de pacote ZIP (método STORE sem compressão + CRC32 IEEE) para geração de arquivos .docx OpenXML em Uint8Array.
  */
-function createZipArchive(files: Array<{ name: string; content: string }>): Blob {
+export function createZipArchiveUint8Array(files: Array<{ name: string; content: string }>): Uint8Array {
   const encoder = new TextEncoder()
   const crcTable = new Uint32Array(256)
   for (let n = 0; n < 256; n++) {
@@ -562,16 +634,21 @@ function createZipArchive(files: Array<{ name: string; content: string }>): Blob
   ev.setUint32(16, offset, true)
   ev.setUint16(20, 0, true)
 
-  return new Blob([...localParts, ...centralParts, eocd] as unknown as BlobPart[], {
-    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-  })
+  const allParts = [...localParts, ...centralParts, eocd]
+  const totalLength = allParts.reduce((acc, p) => acc + p.length, 0)
+  const result = new Uint8Array(totalLength)
+  let cur = 0
+  for (const p of allParts) {
+    result.set(p, cur)
+    cur += p.length
+  }
+  return result
 }
 
 /**
- * Exporta para pacote OpenXML (.docx) nativo válido com suporte a tabelas `<w:tbl>`, títulos H1..H6, blocos de código e estilos inline.
+ * Gera os bytes OpenXML (.docx) nativos em Uint8Array com suporte a tabelas `<w:tbl>`, títulos H1..H6, blocos de código e estilos inline.
  */
-export function exportAsDocx(filename: string, markdown: string): void {
-  const title = stripExtension(filename)
+export function generateDocxUint8Array(filename: string, markdown: string): Uint8Array {
   const lines = markdown.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')
   const bodyElementsXml: string[] = []
   let inCodeBlock = false
@@ -689,11 +766,22 @@ export function exportAsDocx(filename: string, markdown: string): void {
   </w:body>
 </w:document>`
 
-  const blob = createZipArchive([
+  return createZipArchiveUint8Array([
     { name: '[Content_Types].xml', content: contentTypesXml },
     { name: '_rels/.rels', content: relsXml },
     { name: 'word/document.xml', content: documentXml }
   ])
+}
+
+/**
+ * Exporta para pacote OpenXML (.docx) nativo válido.
+ */
+export function exportAsDocx(filename: string, markdown: string): void {
+  const title = stripExtension(filename)
+  const docxBytes = generateDocxUint8Array(filename, markdown)
+  const blob = new Blob([docxBytes as any], {
+    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  })
   triggerBlobDownload(blob, `${title}.docx`)
 }
 
