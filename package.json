@@ -18,7 +18,7 @@
     "preview:web": "vite preview --outDir dist-web --port 4173",
     "tauri": "tauri",
     "test": "npx tsx scripts/test-exporters.mjs",
-    "build:native": "npm run build && cargo build --release --manifest-path src-tauri/Cargo.toml"
+    "build:native": "npx tauri build --no-bundle"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.1.1",

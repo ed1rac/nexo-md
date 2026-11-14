@@ -115,8 +115,8 @@ jobs:
       - name: Executar testes unitários do motor Rust
         run: cargo test --manifest-path src-tauri/Cargo.toml --lib
 
-      - name: Compilar Binário Nativo Rust Release
-        run: cargo build --release --manifest-path src-tauri/Cargo.toml --target ${{ matrix.target }}
+      - name: Compilar Binário Nativo Rust Release (com Frontend Embutido via Tauri CLI)
+        run: npx tauri build --target ${{ matrix.target }} --no-bundle
 
       - name: Publicar Binário Nativo da Plataforma
         uses: actions/upload-artifact@v4
